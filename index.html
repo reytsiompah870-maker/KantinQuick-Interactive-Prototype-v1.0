@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KantinQuick v1.0 — Interactive Prototype (Design Thinking)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top left, #eef2ff 0%, #f8fafc 45%, #e2e8f0 100%);
+    }
+
+    /* Custom subtle scrollbar inside phone viewport */
+    .phone-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .phone-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .phone-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 9999px;
+    }
+
+    /* Smooth screen transitions */
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .screen-enter {
+      animation: fadeSlideIn 0.25s ease-out forwards;
+    }
+
+    /* Checkmark pop animation */
+    @keyframes popBounce {
+      0% { transform: scale(0.5); opacity: 0; }
+      70% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popBounce 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* Shake animation for error state */
+    @keyframes shakeX {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-5px); }
+      40%, 80% { transform: translateX(5px); }
+    }
+    .animate-shake {
+      animation: shakeX 0.35s ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col lg:flex-row items-center justify-center p-3 sm:p-6 gap-6 text-slate-800">
+
+  <!-- PANEL PANDUAN USABILITY TESTING (Di luar frame ponsel pada desktop, ringkas di mobile) -->
+  <aside class="w-full max-w-md lg:w-80 bg-white/90 backdrop-blur border border-slate-200/80 rounded-2xl shadow-lg p-4 sm:p-5 order-2 lg:order-1">
+    <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+      <div>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+          v1.0 • Testable Prototype
+        </span>
+        <h1 class="text-base font-bold text-slate-900 mt-1.5">KantinQuick — Uji Coba Alur</h1>
+      </div>
+      <button onclick="resetPrototype()" title="Ulangi dari awal" class="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition text-xs font-medium flex items-center gap-1 border border-slate-200">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Reset
+      </button>
+    </div>
+
+    <div class="mt-3.5 space-y-3 text-xs text-slate-600 leading-relaxed">
+      <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/70">
+        <p class="font-semibold text-slate-800 mb-1">🎯 Skenario Tugas Pengguna:</p>
+        <ol class="list-decimal list-inside space-y-1">
+          <li>Pilih tenant yang buka (mis. <strong>Warung Bu Sari</strong>).</li>
+          <li>Tambahkan <strong>Nasi Ayam Geprek</strong> ke keranjang.</li>
+          <li>Coba klik slot penuh <strong>12:00 WITA</strong> untuk melihat simulasi <em>Error State</em>, lalu pilih <strong>12:15 WITA</strong>.</li>
+          <li>Selesaikan pembayaran <strong>QRIS</strong> (<em>Success State</em>).</li>
+          <li>Tunjukkan <strong>Kode QR #A-14</strong> untuk ambil makanan.</li>
+        </ol>
+      </div>
+
+      <!-- Indikator Layar Aktif -->
+      <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+        <span>Layar Aktif:</span>
+        <span id="helper-screen-label" class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">1/6 • Beranda Tenant</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- SMARTPHONE FRAME MOCKUP -->
+  <main class="w-full max-w-[390px] h-[780px] max-h-[90vh] bg-slate-900 rounded-[44px] p-3 shadow-2xl border-[4px] border-slate-800 relative flex flex-col order-1 lg:order-2 select-none">
+    <!-- Speaker & Camera Notch -->
+    <div class="w-32 h-5 bg-slate-900 rounded-b-2xl mx-auto absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-2">
+      <span class="w-10 h-1 bg-slate-700 rounded-full"></span>
+      <span class="w-2 h-2 bg-slate-700 rounded-full"></span>
+    </div>
+
+    <!-- Inner Mobile Screen -->
+    <div class="w-full h-full bg-slate-50 rounded-[34px] overflow-hidden flex flex-col relative">
+      
+      <!-- Mobile Status Bar -->
+      <div class="bg-white px-6 pt-2.5 pb-1.5 flex items-center justify-between text-[11px] font-semibold text-slate-700 shrink-0 z-20">
+        <span>11:45</span>
+        <div class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21L15.6 16.2C14.6 15.45 13.35 15 12 15C10.65 15 9.4 15.45 8.4 16.2L12 21ZM12 3C7.95 3 4.21 4.34 1.2 6.6L3 9C5.5 7.12 8.62 6 12 6C15.38 6 18.5 7.12 21 9L22.8 6.6C19.79 4.34 16.05 3 12 3ZM12 9C9.3 9 6.81 9.89 4.8 11.4L6.6 13.8C8.1 12.67 9.97 12 12 12C14.03 12 15.9 12.67 17.4 13.8L19.2 11.4C17.19 9.89 14.7 9 12 9Z"/></svg>
+          <div class="w-5 h-2.5 border border-slate-700 rounded-[3px] p-[1px] flex items-center">
+            <div class="w-3.5 h-full bg-slate-800 rounded-[1px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic App Header -->
+      <header id="app-header" class="bg-white px-4 py-3 border-b border-slate-200/80 flex items-center gap-3 shrink-0 z-10">
+        <!-- Injected dynamically via JS -->
+      </header>
+
+      <!-- Main Scrollable Viewport -->
+      <div id="app-viewport" class="flex-1 overflow-y-auto phone-scroll p-4 pb-24 space-y-4">
+        <!-- Screen content rendered here -->
+      </div>
+
+      <!-- Sticky Bottom Action Bar (Cart / Checkout CTA) -->
+      <div id="app-bottom-bar" class="hidden absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 p-3.5 z-20">
+        <!-- Bottom CTA rendered here -->
+      </div>
+
+      <!-- Toast Notification (Non-blocking replacement for alert) -->
+      <div id="toast-box" class="hidden absolute top-14 inset-x-4 bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-lg z-40 flex items-center justify-between gap-2">
+        <span id="toast-message">Pesan notifikasi</span>
+      </div>
+
+      <!-- Home Indicator Bar -->
+      <div class="bg-white py-1.5 flex justify-center shrink-0">
+        <div class="w-28 h-1 bg-slate-300 rounded-full"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ==========================================
+    // DATA MOCKUP REALISTIS KANTIN KAMPUS
+    // ==========================================
+    const TENANTS = [
+      {
+        id: 'bu-sari',
+        name: 'Warung Bu Sari',
+        category: 'Aneka Nasi & Ayam Geprek',
+        waitTime: '10–15 mnt',
+        rating: '4.9',
+        isOpen: true,
+        badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        emoji: '🍛',
+        menus: [
+          { id: 'm1', name: 'Nasi Ayam Geprek', desc: 'Ayam crispy geprek sambal bawang + lalapan', price: 15000, stock: 12, emoji: '🍗' },
+          { id: 'm2', name: 'Nasi Goreng Spesial', desc: 'Nasi goreng kampung + telur mata sapi + kerupuk', price: 14000, stock: 8, emoji: '🍳' },
+          { id: 'm3', name: 'Es Teh Manis', desc: 'Teh melati segar dingin ukuran jumbo', price: 4000, stock: 25, emoji: '🧊' },
+          { id: 'm4', name: 'Tempe Mendoan (3 pcs)', desc: 'Hangat dengan sambal kecap pedas manis', price: 5000, stock: 15, emoji: '🥟' }
+        ]
+      },
+      {
+        id: 'kedai-kopi',
+        name: 'Kedai Kopi & Mie Kampus',
+        category: 'Mie Instan, Roti Bakar & Kopi',
+        waitTime: '5–10 mnt',
+        rating: '4.8',
+        isOpen: true,
+        badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        emoji: '🍜',
+        menus: [
+          { id: 'k1', name: 'Indomie Goreng Telur Kornet', desc: 'Mie goreng double + telur + kornet sapi', price: 13000, stock: 10, emoji: '🍝' },
+          { id: 'k2', name: 'Es Kopi Susu Gula Aren', desc: 'Espresso arabika + susu segar + gula aren', price: 12000, stock: 18, emoji: '🧋' },
+          { id: 'k3', name: 'Roti Bakar Cokelat Keju', desc: 'Roti tawar tebal panggang mentega', price: 10000, stock: 7, emoji: '🥪' }
+        ]
+      },
+      {
+        id: 'bakso-kumis',
+        name: 'Bakso Mas Kumis',
+        category: 'Bakso Sapi & Mie Ayam',
+        waitTime: 'Tutup sementara',
+        rating: '4.7',
+        isOpen: false,
+        badgeColor: 'bg-slate-100 text-slate-500 border-slate-200',
+        emoji: '🍲',
+        menus: []
+      }
+    ];
+
+    const PICKUP_SLOTS = [
+      { time: '12:00 WITA', status: 'full', label: '12:00 WITA (Penuh)' },
+      { time: '12:15 WITA', status: 'available', label: '12:15 WITA' },
+      { time: '12:30 WITA', status: 'available', label: '12:30 WITA' }
+    ];
+
+    // ==========================================
+    // STATE APLIKASI PURWARUPA
+    // ==========================================
+    let state = {
+      screen: 1, // 1: Beranda, 2: Menu, 3: Keranjang, 4: Checkout QRIS, 5: Sukses, 6: Pelacakan & QR
+      selectedTenantId: 'bu-sari',
+      cart: {}, // { menuId: qty }
+      notes: '',
+      selectedSlot: null, // '12:15 WITA' atau '12:30 WITA'
+      slotError: false,
+      orderStatusStep: 1 // 1: Diterima, 2: Dimasak, 3: Siap Diambil
+    };
+
+    // Helper format Rupiah
+    function formatRp(num) {
+      return 'Rp' + num.toLocaleString('id-ID');
+    }
+
+    // Toast pengganti alert()
+    let toastTimer = null;
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      const txt = document.getElementById('toast-message');
+      txt.textContent = msg;
+      box.classList.remove('hidden');
+      box.classList.add('screen-enter');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        box.classList.add('hidden');
+      }, 2800);
+    }
+
+    function getSelectedTenant() {
+      return TENANTS.find(t => t.id === state.selectedTenantId) || TENANTS[0];
+    }
+
+    function getCartItems() {
+      const tenant = getSelectedTenant();
+      const items = [];
+      for (const [menuId, qty] of Object.entries(state.cart)) {
+        if (qty > 0) {
+          const item = tenant.menus.find(m => m.id === menuId);
+          if (item) items.push({ ...item, qty });
+        }
+      }
+      return items;
+    }
+
+    function getCartSummary() {
+      const items = getCartItems();
+      const totalQty = items.reduce((sum, i) => sum + i.qty, 0);
+      const totalPrice = items.reduce((sum, i) => sum + (i.price * i.qty), 0);
+      return { items, totalQty, totalPrice };
+    }
+
+    // ==========================================
+    // AKSI INTERAKSI PENGGUNA
+    // ==========================================
+    function goToScreen(screenNum) {
+      state.screen = screenNum;
+      render();
+      document.getElementById('app-viewport').scrollTop = 0;
+    }
+
+    function selectTenant(tenantId) {
+      const tenant = TENANTS.find(t => t.id === tenantId);
+      if (!tenant || !tenant.isOpen) {
+        showToast('Maaf, tenant ini sedang tutup.');
+        return;
+      }
+      if (state.selectedTenantId !== tenantId) {
+        state.cart = {};
+        state.selectedSlot = null;
+        state.slotError = false;
+      }
+      state.selectedTenantId = tenantId;
+      goToScreen(2);
+    }
+
+    function updateQty(menuId, delta) {
+      const current = state.cart[menuId] || 0;
+      const next = Math.max(0, current + delta);
+      if (next === 0) {
+        delete state.cart[menuId];
+      } else {
+        state.cart[menuId] = next;
+      }
+      render();
+    }
+
+    function selectPickupSlot(slotObj) {
+      if (slotObj.status === 'full') {
+        state.slotError = true;
+        state.selectedSlot = null;
+        render();
+        // Trigger shake animation on error banner
+        setTimeout(() => {
+          const errEl = document.getElementById('slot-error-banner');
+          if (errEl) {
+            errEl.classList.remove('animate-shake');
+            void errEl.offsetWidth;
+            errEl.classList.add('animate-shake');
+          }
+        }, 10);
+        return;
+      }
+      state.slotError = false;
+      state.selectedSlot = slotObj.time;
+      render();
+    }
+
+    function quickFixSlot() {
+      state.slotError = false;
+      state.selectedSlot = '12:15 WITA';
+      showToast('Slot pengambilan diubah ke 12:15 WITA');
+      render();
+    }
+
+    function advanceOrderStatus() {
+      if (state.orderStatusStep < 3) {
+        state.orderStatusStep += 1;
+        render();
+      }
+    }
+
+    function resetPrototype() {
+      state = {
+        screen: 1,
+        selectedTenantId: 'bu-sari',
+        cart: {},
+        notes: '',
+        selectedSlot: null,
+        slotError: false,
+        orderStatusStep: 1
+      };
+      showToast('Purwarupa di-reset ke awal');
+      render();
+    }
+
+    // ==========================================
+    // RENDER LAYAR 1 - 6
+    // ==========================================
+    function render() {
+      const header = document.getElementById('app-header');
+      const viewport = document.getElementById('app-viewport');
+      const bottomBar = document.getElementById('app-bottom-bar');
+      const helperLabel = document.getElementById('helper-screen-label');
+
+      const screenNames = {
+        1: '1/6 • Beranda Tenant',
+        2: '2/6 • Katalog Menu',
+        3: '3/6 • Keranjang & Jadwal',
+        4: '4/6 • Pembayaran QRIS',
+        5: '5/6 • Konfirmasi Sukses',
+        6: '6/6 • Pelacakan & QR Ambil'
+      };
+      helperLabel.textContent = screenNames[state.screen];
+
+      // Default hide bottom bar
+      bottomBar.classList.add('hidden');
+      bottomBar.innerHTML = '';
+
+      // ------------------------------------------
+      // LAYAR 1: BERANDA & DAFTAR TENANT
+      // ------------------------------------------
+      if (state.screen === 1) {
+        header.innerHTML = `
+          <div class="flex items-center justify-between w-full">
+            <div>
+              <p class="text-[11px] font-medium text-slate-400">Kantin Pusat Kampus</p>
+              <h2 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-1.5">
+                <span class="w-6 h-6 rounded-lg bg-blue-600 text-white inline-flex items-center justify-center text-xs font-bold">KQ</span>
+                KantinQuick
+              </h2>
+            </div>
+            <span class="text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">
+              Jam Istirahat
+            </span>
+          </div>
+        `;
+
+        viewport.innerHTML = `
+          <div class="screen-enter space-y-4">
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-4 text-white shadow-md">
+              <p class="text-xs font-medium text-blue-100">Pesan dulu, ambil tanpa antre!</p>
+              <h3 class="text-base font-bold mt-0.5 leading-snug">Pilih jadwal ambil makan siangmu sekarang.</h3>
+              <div class="mt-3 inline-flex items-center gap-1.5 bg-white/15 backdrop-blur px-2.5 py-1 rounded-lg text-[11px]">
+                <span>⚡ Estimasi siap 10–15 menit</span>
+              </div>
+            </div>
+
+            <!-- Section Title -->
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-slate-800">Daftar Tenant Kantin</h4>
+              <span class="text-xs text-slate-400">3 Gerai</span>
+            </div>
+
+            <!-- Tenant Cards -->
+            <div class="space-y-3">
+              ${TENANTS.map(t => `
+                <button onclick="selectTenant('${t.id}')" class="w-full text-left bg-white p-3.5 rounded-2xl border ${t.isOpen ? 'border-slate-200 hover:border-blue-400 hover:shadow-md cursor-pointer' : 'border-slate-200/70 opacity-65 cursor-not-allowed'} transition flex items-center gap-3.5">
+                  <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl shrink-0">
+                    ${t.emoji}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <h5 class="text-sm font-bold text-slate-900 truncate">${t.name}</h5>
+                      <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${t.badgeColor}">
+                        ${t.isOpen ? 'Buka' : 'Tutup'}
+                      </span>
+                    </div>
+                    <p class="text-xs text-slate-500 truncate mt-0.5">${t.category}</p>
+                    <div class="flex items-center gap-3 mt-1.5 text-[11px] font-medium text-slate-600">
+                      <span>⭐ ${t.rating}</span>
+                      <span>•</span>
+                      <span>⏱ ${t.waitTime}</span>
+                    </div>
+                  </div>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // ------------------------------------------
+      // LAYAR 2: KATALOG MENU TENANT
+      // ------------------------------------------
+      else if (state.screen === 2) {
+        const tenant = getSelectedTenant();
+        const { totalQty, totalPrice } = getCartSummary();
+
+        header.innerHTML = `
+          <button onclick="goToScreen(1)" class="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="min-w-0 flex-1">
+            <h2 class="text-sm font-bold text-slate-900 truncate">${tenant.name}</h2>
+            <p class="text-[11px] text-slate-500 truncate">Estimasi siap ${tenant.waitTime}</p>
+          </div>
+        `;
+
+        viewport.innerHTML = `
+          <div class="screen-enter space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Pilih Menu Tersedia</h3>
+              <span class="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-medium">Stok Real-time</span>
+            </div>
+
+            ${tenant.menus.map(m => {
+              const qty = state.cart[m.id] || 0;
+              return `
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-sm flex gap-3">
+                  <div class="w-14 h-14 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-2xl shrink-0">
+                    ${m.emoji}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-2">
+                      <h4 class="text-sm font-bold text-slate-900 leading-snug">${m.name}</h4>
+                    </div>
+                    <p class="text-[11px] text-slate-500 line-clamp-2 mt-0.5">${m.desc}</p>
+                    <div class="flex items-center justify-between mt-2.5">
+                      <div>
+                        <p class="text-sm font-extrabold text-blue-700">${formatRp(m.price)}</p>
+                        <p class="text-[10px] text-slate-400">Sisa ${m.stock} porsi</p>
+                      </div>
+
+                      ${qty === 0 ? `
+                        <button onclick="updateQty('${m.id}', 1)" class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 hover:border-blue-600 text-xs font-bold transition">
+                          + Tambah
+                        </button>
+                      ` : `
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-xl p-1 border border-slate-200">
+                          <button onclick="updateQty('${m.id}', -1)" class="w-6 h-6 rounded-lg bg-white text-slate-700 font-bold text-sm shadow-sm flex items-center justify-center hover:bg-slate-50">-</button>
+                          <span class="text-xs font-bold w-4 text-center">${qty}</span>
+                          <button onclick="updateQty('${m.id}', 1)" class="w-6 h-6 rounded-lg bg-blue-600 text-white font-bold text-sm shadow-sm flex items-center justify-center hover:bg-blue-700">+</button>
+                        </div>
+                      `}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+
+        if (totalQty > 0) {
+          bottomBar.classList.remove('hidden');
+          bottomBar.innerHTML = `
+            <button onclick="goToScreen(3)" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-2xl px-4 py-3 shadow-lg shadow-blue-600/25 flex items-center justify-between transition">
+              <div class="flex items-center gap-2.5">
+                <span class="bg-white/20 text-white text-xs font-extrabold px-2 py-0.5 rounded-lg">${totalQty} Item</span>
+                <span class="text-xs font-semibold text-blue-100">Lihat Keranjang</span>
+              </div>
+              <span class="text-sm font-extrabold">${formatRp(totalPrice)} →</span>
+            </button>
+          `;
+        }
+      }
+
+      // ------------------------------------------
+      // LAYAR 3: KERANJANG & OPSI AMBIL (WITH ERROR STATE)
+      // ------------------------------------------
+      else if (state.screen === 3) {
+        const tenant = getSelectedTenant();
+        const { items, totalPrice } = getCartSummary();
+
+        header.innerHTML = `
+          <button onclick="goToScreen(2)" class="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Keranjang & Jadwal Ambil</h2>
+            <p class="text-[11px] text-slate-500">${tenant.name}</p>
+          </div>
+        `;
+
+        viewport.innerHTML = `
+          <div class="screen-enter space-y-4">
+            <!-- PILIHAN SLOT JAM PENGAMBILAN (Ditonjolkan sesuai hasil Walkthrough) -->
+            <div class="bg-white p-3.5 rounded-2xl border-2 ${state.slotError ? 'border-rose-400' : 'border-blue-200'} shadow-sm space-y-2.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                  🕒 Pilih Jam Pengambilan
+                </label>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">Wajib Dipilih</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Pesanan akan disiapkan tepat sebelum jam ambil.</p>
+
+              <div class="grid grid-cols-1 gap-2 pt-1">
+                ${PICKUP_SLOTS.map(slot => {
+                  const isSelected = state.selectedSlot === slot.time;
+                  const isFull = slot.status === 'full';
+                  return `
+                    <button onclick='selectPickupSlot(${JSON.stringify(slot)})'
+                      class="w-full px-3.5 py-2.5 rounded-xl border text-left flex items-center justify-between transition ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : isFull
+                            ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-rose-50 hover:border-rose-300'
+                            : 'bg-white text-slate-800 border-slate-200 hover:border-blue-400'
+                      }">
+                      <span class="text-xs font-bold">${slot.label}</span>
+                      ${isSelected
+                        ? '<span class="text-[11px] font-semibold bg-white/20 px-2 py-0.5 rounded-md">Terpilih ✓</span>'
+                        : isFull
+                          ? '<span class="text-[10px] font-semibold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md">Kuota Habis</span>'
+                          : '<span class="text-[11px] text-emerald-600 font-semibold">Tersedia</span>'
+                      }
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- KEADAAN ERROR (ERROR STATE BANNER) -->
+              ${state.slotError ? `
+                <div id="slot-error-banner" class="mt-2 bg-rose-50 border border-rose-300 rounded-xl p-3 text-rose-800 space-y-2">
+                  <div class="flex items-start gap-2">
+                    <span class="text-base leading-none">⚠️</span>
+                    <p class="text-[11px] font-semibold leading-relaxed">
+                      Maaf, slot jam 12:00 WITA sudah penuh. Silakan pilih jam pengambilan berikutnya.
+                    </p>
+                  </div>
+                  <button onclick="quickFixSlot()" class="w-full py-1.5 px-3 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-sm">
+                    Pilih 12:15 WITA
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- RINGKASAN ITEM PESANAN -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-3">
+              <h3 class="text-xs font-bold text-slate-800">Rincian Menu</h3>
+              ${items.map(item => `
+                <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 last:border-none last:pb-0">
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold text-slate-900 truncate">${item.name}</p>
+                    <p class="text-[11px] text-slate-500">${item.qty} x ${formatRp(item.price)}</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-800">${formatRp(item.price * item.qty)}</span>
+                  </div>
+                </div>
+              `).join('')}
+
+              <!-- Input Catatan Opsional -->
+              <div class="pt-1">
+                <label class="block text-[11px] font-semibold text-slate-600 mb-1">Catatan untuk Dapur (Opsional)</label>
+                <input type="text" value="${state.notes}" oninput="state.notes = this.value"
+                  placeholder="Contoh: Tidak pedas, sambal dipisah..."
+                  class="w-full text-xs px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500" />
+              </div>
+            </div>
+
+            <!-- Rincian Biaya -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
+              <div class="flex justify-between text-slate-500">
+                <span>Subtotal Pesanan</span>
+                <span>${formatRp(totalPrice)}</span>
+              </div>
+              <div class="flex justify-between text-slate-500">
+                <span>Biaya Layanan Aplikasi</span>
+                <span class="text-emerald-600 font-semibold">Gratis (Rp0)</span>
+              </div>
+              <div class="flex justify-between font-extrabold text-slate-900 text-sm pt-2 border-t border-slate-100">
+                <span>Total Bayar</span>
+                <span class="text-blue-700">${formatRp(totalPrice)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const canProceed = Boolean(state.selectedSlot);
+        bottomBar.classList.remove('hidden');
+        bottomBar.innerHTML = `
+          <button onclick="${canProceed ? 'goToScreen(4)' : "showToast('Pilih jam pengambilan yang tersedia terlebih dahulu')"}"
+            class="w-full py-3 px-4 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 ${
+              canProceed
+                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 cursor-pointer'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }">
+            ${canProceed ? `Lanjut ke Pembayaran (${state.selectedSlot}) →` : 'Pilih Jam Pengambilan Dulu'}
+          </button>
+        `;
+      }
+
+      // ------------------------------------------
+      // LAYAR 4: CHECKOUT & PEMBAYARAN QRIS
+      // ------------------------------------------
+      else if (state.screen === 4) {
+        const tenant = getSelectedTenant();
+        const { items, totalPrice } = getCartSummary();
+
+        header.innerHTML = `
+          <button onclick="goToScreen(3)" class="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Pembayaran QRIS</h2>
+            <p class="text-[11px] text-slate-500">Ambil pukul ${state.selectedSlot}</p>
+          </div>
+        `;
+
+        viewport.innerHTML = `
+          <div class="screen-enter space-y-4">
+            <!-- Total Tagihan Card -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 text-center space-y-1">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Pembayaran</p>
+              <p class="text-2xl font-extrabold text-slate-900">${formatRp(totalPrice)}</p>
+              <p class="text-[11px] text-slate-500">${tenant.name} • ${items.length} jenis menu</p>
+            </div>
+
+            <!-- Simulated QRIS Box -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col items-center text-center space-y-3">
+              <div class="w-full flex items-center justify-between pb-2 border-b border-slate-100">
+                <span class="text-xs font-extrabold tracking-tight text-slate-800">QRIS</span>
+                <span class="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md">Instan & Otomatis</span>
+              </div>
+
+              <!-- SVG QR Code Realistis -->
+              <div class="p-3 bg-white border-2 border-slate-900 rounded-2xl shadow-inner">
+                <svg class="w-40 h-40 text-slate-900" viewBox="0 0 100 100" fill="currentColor">
+                  <!-- Finder Patterns -->
+                  <path d="M10,10 h25 v25 h-25 z M15,15 v15 h15 v-15 z M19,19 h7 v7 h-7 z"/>
+                  <path d="M65,10 h25 v25 h-25 z M70,15 v15 h15 v-15 z M74,19 h7 v7 h-7 z"/>
+                  <path d="M10,65 h25 v25 h-25 z M15,70 v15 h15 v-15 z M19,74 h7 v7 h-7 z"/>
+                  <!-- Data modules -->
+                  <rect x="42" y="12" width="5" height="5"/><rect x="52" y="12" width="5" height="10"/>
+                  <rect x="42" y="24" width="10" height="5"/><rect x="12" y="42" width="10" height="5"/>
+                  <rect x="28" y="42" width="5" height="12"/><rect x="42" y="42" width="16" height="16" rx="2"/>
+                  <rect x="65" y="42" width="8" height="5"/><rect x="80" y="42" width="10" height="10"/>
+                  <rect x="42" y="65" width="5" height="12"/><rect x="54" y="68" width="12" height="5"/>
+                  <rect x="72" y="65" width="8" height="8"/><rect x="65" y="80" width="10" height="10"/>
+                  <rect x="82" y="80" width="8" height="10"/><rect x="48" y="84" width="10" height="6"/>
+                </svg>
+              </div>
+
+              <p class="text-[11px] text-slate-500 leading-relaxed">
+                Untuk simulasi pengujian, klik tombol <strong>"Bayar Sekarang"</strong> di bawah untuk mengonfirmasi transaksi QRIS.
+              </p>
+            </div>
+          </div>
+        `;
+
+        bottomBar.classList.remove('hidden');
+        bottomBar.innerHTML = `
+          <button onclick="goToScreen(5)" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-extrabold text-xs py-3.5 px-4 rounded-2xl shadow-lg shadow-blue-600/25 transition">
+            Bayar Sekarang (${formatRp(totalPrice)})
+          </button>
+        `;
+      }
+
+      // ------------------------------------------
+      // LAYAR 5: KONFIRMASI PEMBAYARAN (SUCCESS STATE)
+      // ------------------------------------------
+      else if (state.screen === 5) {
+        const tenant = getSelectedTenant();
+        const { totalPrice } = getCartSummary();
+
+        header.innerHTML = `
+          <div class="w-full text-center">
+            <h2 class="text-sm font-bold text-slate-900">Status Transaksi</h2>
+          </div>
+        `;
+
+        viewport.innerHTML = `
+          <div class="screen-enter flex flex-col items-center text-center pt-4 space-y-4">
+            <!-- Animated Green Checkmark -->
+            <div class="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center animate-pop shadow-md shadow-emerald-500/20">
+              <svg class="w-11 h-11" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+
+            <div class="space-y-1">
+              <span class="inline-block text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-0.5 rounded-full">
+                Success State • Lunas
+              </span>
+              <h3 class="text-xl font-extrabold text-slate-900 pt-1">Pembayaran Berhasil!</h3>
+              <p class="text-xs text-slate-500 max-w-[260px] mx-auto">
+                Pesanan Diterima Dapur <strong>${tenant.name}</strong> dan sedang diproses.
+              </p>
+            </div>
+
+            <!-- Info Box -->
+            <div class="w-full bg-white p-4 rounded-2xl border border-slate-200 text-left space-y-2.5 text-xs">
+              <div class="flex justify-between">
+                <span class="text-slate-500">Nomor Antrean</span>
+                <span class="font-extrabold text-blue-700">#A-14</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-500">Jadwal Pengambilan</span>
+                <span class="font-bold text-slate-900">${state.selectedSlot}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-500">Total Dibayar (QRIS)</span>
+                <span class="font-bold text-emerald-700">${formatRp(totalPrice)}</span>
+              </div>
+              ${state.notes ? `
+                <div class="pt-2 border-t border-slate-100">
+                  <span class="text-slate-400 block text-[10px]">Catatan:</span>
+                  <span class="font-medium text-slate-700">"${state.notes}"</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+
+        bottomBar.classList.remove('hidden');
+        bottomBar.innerHTML = `
+          <button onclick="goToScreen(6)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3.5 px-4 rounded-2xl shadow-lg shadow-emerald-600/25 transition">
+            Lihat Tiket & Kode QR →
+          </button>
+        `;
+      }
+
+      // ------------------------------------------
+      // LAYAR 6: PELACAKAN & KODE QR AMBIL
+      // ------------------------------------------
+      else if (state.screen === 6) {
+        const tenant = getSelectedTenant();
+        const { items } = getCartSummary();
+
+        header.innerHTML = `
+          <div class="w-full flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Tiket Pengambilan</h2>
+              <p class="text-[11px] text-slate-500">${tenant.name}</p>
+            </div>
+            <span class="text-xs font-extrabold bg-blue-600 text-white px-2.5 py-1 rounded-xl">#A-14</span>
+          </div>
+        `;
+
+        const steps = [
+          { step: 1, label: 'Diterima' },
+          { step: 2, label: 'Dimasak' },
+          { step: 3, label: 'Siap Diambil' }
+        ];
+
+        viewport.innerHTML = `
+          <div class="screen-enter space-y-4">
+            <!-- Status Progress Tracker -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800">Status Pesanan</span>
+                <span class="text-[11px] font-bold ${state.orderStatusStep === 3 ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50'} px-2 py-0.5 rounded-md">
+                  ${state.orderStatusStep === 3 ? 'Siap Diambil di Konter!' : state.orderStatusStep === 2 ? 'Sedang Dimasak...' : 'Pesanan Diterima'}
+                </span>
+              </div>
+
+              <!-- Progress Steps -->
+              <div class="grid grid-cols-3 gap-2 pt-1">
+                ${steps.map(s => {
+                  const active = state.orderStatusStep >= s.step;
+                  return `
+                    <div class="text-center space-y-1.5">
+                      <div class="h-1.5 rounded-full ${active ? (state.orderStatusStep === 3 ? 'bg-emerald-500' : 'bg-blue-600') : 'bg-slate-200'} transition-all"></div>
+                      <p class="text-[11px] font-bold ${active ? 'text-slate-900' : 'text-slate-400'}">${s.label}</p>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- Simulasi Kontrol Dapur (Untuk Moderator Usability Testing) -->
+              ${state.orderStatusStep < 3 ? `
+                <button onclick="advanceOrderStatus()" class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition border border-slate-200">
+                  ⚡ Simulasi Dapur: Majukan Status (${state.orderStatusStep === 1 ? 'Mulai Masak' : 'Pesanan Siap'})
+                </button>
+              ` : `
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-800 font-medium text-center">
+                  ✅ Makananmu sudah siap! Tunjukkan QR di bawah ke kasir jalur khusus Pre-Order.
+                </div>
+              `}
+            </div>
+
+            <!-- Tiket & QR Pickup -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col items-center text-center space-y-2.5 relative overflow-hidden">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Kode Verifikasi Pengambilan</p>
+              <div class="text-2xl font-black tracking-widest text-slate-900">#A-14</div>
+
+              <!-- QR Pickup Code -->
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                <svg class="w-32 h-32 text-slate-900" viewBox="0 0 100 100" fill="currentColor">
+                  <path d="M10,10 h25 v25 h-25 z M15,15 v15 h15 v-15 z M19,19 h7 v7 h-7 z"/>
+                  <path d="M65,10 h25 v25 h-25 z M70,15 v15 h15 v-15 z M74,19 h7 v7 h-7 z"/>
+                  <path d="M10,65 h25 v25 h-25 z M15,70 v15 h15 v-15 z M19,74 h7 v7 h-7 z"/>
+                  <rect x="44" y="14" width="12" height="6"/><rect x="44" y="26" width="6" height="10"/>
+                  <rect x="14" y="44" width="14" height="6"/><rect x="34" y="44" width="12" height="12"/>
+                  <rect x="52" y="44" width="8" height="6"/><rect x="68" y="44" width="18" height="6"/>
+                  <rect x="44" y="64" width="10" height="10"/><rect x="60" y="68" width="14" height="6"/>
+                  <rect x="78" y="64" width="10" height="24"/><rect x="44" y="80" width="24" height="8"/>
+                </svg>
+              </div>
+
+              <p class="text-xs font-bold text-slate-700">Slot Ambil: ${state.selectedSlot}</p>
+              <p class="text-[11px] text-slate-500">${items.map(i => `${i.qty}x ${i.name}`).join(', ')}</p>
+            </div>
+          </div>
+        `;
+
+        bottomBar.classList.remove('hidden');
+        bottomBar.innerHTML = `
+          <button onclick="resetPrototype()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 px-4 rounded-2xl transition">
+            Buat Pesanan Baru (Reset Uji Coba)
+          </button>
+        `;
+      }
+    }
+
+    // Inisialisasi tampilan awal
+    window.onload = function () {
+      render();
+    };
+  </script>
+</body>
+</html>
